@@ -133,10 +133,10 @@ triggers:
       - triggered
     id: panel
   - trigger: mqtt
-    topic: "{{ (tv_base_topic | string).strip('/ ') ~ '/' ~ (tv_keypad_1_name | string).strip('/ ') }}"
+    topic: "{{ tv_base_topic }}/{{ tv_keypad_1_name | trim }}"
     id: keypad_1_mqtt
   - trigger: mqtt
-    topic: "{{ (tv_base_topic | string).strip('/ ') ~ '/' ~ (tv_keypad_2_name | string).strip('/ ') }}"
+    topic: "{{ tv_base_topic }}/{{ tv_keypad_2_name | trim }}"
     id: keypad_2_mqtt
   - trigger: homeassistant
     event: start
@@ -147,10 +147,8 @@ variables:
   base_topic: zigbee2mqtt
   keypad_1_name: !input keypad_1_name
   keypad_2_name: !input keypad_2_name
-  keypad_1_set_topic: >-
-    {{ (base_topic | string).strip('/ ') ~ '/' ~ (keypad_1_name | string).strip('/ ') ~ '/set' }}
-  keypad_2_set_topic: >-
-    {{ (base_topic | string).strip('/ ') ~ '/' ~ (keypad_2_name | string).strip('/ ') ~ '/set' }}
+  keypad_1_set_topic: "{{ base_topic }}/{{ keypad_1_name | trim }}/set"
+  keypad_2_set_topic: "{{ base_topic }}/{{ keypad_2_name | trim }}/set"
   # Every keypad that mirrors the panel. Duplicates are dropped so one message
   # is published per keypad.
   keypad_set_topics: "{{ [keypad_1_set_topic, keypad_2_set_topic] | unique | list }}"
