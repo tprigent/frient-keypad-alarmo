@@ -50,19 +50,33 @@ blueprint:
             text: {}
     keypad_codes:
       name: Keypad Codes
-      description: "Access codes and RFID tags accepted by both keypads."
+      description: "PIN codes and RFID tags accepted by both keypads. At least one code or tag is required."
       icon: mdi:key-variant
       collapsed: false
       input:
         pin_list:
-          name: Keypad Pincode List
+          name: Keypad PIN Codes
           description:
-            "A list of valid PIN codes and RFID tags that can be accepted by
-            your keypads, separated by semicolons \" ; \".\n You can enter either a PIN code
-            or an RFID tag for authentication.\n For example: 1234; +ACF5678B\n
-            Surrounding spaces are ignored."
+            "The PIN codes accepted by both keypads. Click \"Add\" to enter one
+            code per line.\n Example: 1234\n
+            Leave empty if you only use RFID tags."
+          default: []
           selector:
-            text: {}
+            text:
+              multiple: true
+        rfid_list:
+          name: Keypad RFID Tags
+          description:
+            "The RFID tags accepted by both keypads. Click \"Add\" to enter one
+            tag per line.\n The tag ID is the action_code published by
+            Zigbee2MQTT when the tag is presented to the keypad (visible in the
+            Z2M logs, or with Settings > Devices & Services > MQTT > Listen to a
+            topic). Example: +ACF5678B\n
+            Leave empty if you do not use RFID tags."
+          default: []
+          selector:
+            text:
+              multiple: true
     control_panel:
       name: Control Panel
       description: "Manage Control Panel settings and actions triggered by state changes."
@@ -167,12 +181,14 @@ blueprint:
         custom_pincode_1:
           name: Pin Code 1
           description:
-            "Enter the PIN code required to trigger custom action 1 via a keypad.\n
-            You can either use the same code from the keypad PIN code list or enter a new code that will launch this action.\n
-            Several codes can be given, separated by semicolons \" ; \"."
-          default: ""
+            "The PIN codes or RFID tags that trigger custom action 1 from a
+            keypad. Click \"Add\" to enter one code per line.\n
+            You can either reuse a code from the keypad code list or enter a new
+            code dedicated to this action."
+          default: []
           selector:
-            text: {}
+            text:
+              multiple: true
         custom_action_1:
           name: Action for Pin Code 1
           description: "Define the action to execute when the PIN code 1 is entered on a keypad."
@@ -188,12 +204,14 @@ blueprint:
         custom_pincode_2:
           name: Pin Code 2
           description:
-            "Enter the PIN code required to trigger custom action 2 via a keypad.\n
-            You can either use the same code from the keypad PIN code list or enter a new code that will launch this action.\n
-            Several codes can be given, separated by semicolons \" ; \"."
-          default: ""
+            "The PIN codes or RFID tags that trigger custom action 2 from a
+            keypad. Click \"Add\" to enter one code per line.\n
+            You can either reuse a code from the keypad code list or enter a new
+            code dedicated to this action."
+          default: []
           selector:
-            text: {}
+            text:
+              multiple: true
         custom_action_2:
           name: Action for Pin Code 2
           description: "Define the action to execute when the PIN code 2 is entered on a keypad."
@@ -209,12 +227,14 @@ blueprint:
         custom_pincode_3:
           name: Pin Code 3
           description:
-            "Enter the PIN code required to trigger custom action 3 via a keypad.\n
-            You can either use the same code from the keypad PIN code list or enter a new code that will launch this action.\n
-            Several codes can be given, separated by semicolons \" ; \"."
-          default: ""
+            "The PIN codes or RFID tags that trigger custom action 3 from a
+            keypad. Click \"Add\" to enter one code per line.\n
+            You can either reuse a code from the keypad code list or enter a new
+            code dedicated to this action."
+          default: []
           selector:
-            text: {}
+            text:
+              multiple: true
         custom_action_3:
           name: Action for Pin Code 3
           description: "Define the action to execute when the PIN code 3 is entered on a keypad."
@@ -249,14 +269,30 @@ variables:
       'disarmed': 'disarm',
       'triggered': 'in_alarm' } %}
     {{ modes.get(panel_state, '') }}
+  # Codes are entered one per line, but a single semicolon-separated string is
+  # still accepted so configurations made with an older version keep working.
   pin_list_var: !input pin_list
-  pin_list: "{{ pin_list_var.split(';') | map('trim') | reject('eq', '') | list }}"
+  rfid_list_var: !input rfid_list
   custom_pincode_1_var: !input custom_pincode_1
   custom_pincode_2_var: !input custom_pincode_2
   custom_pincode_3_var: !input custom_pincode_3
-  custom_pincodes_1: "{{ custom_pincode_1_var.split(';') | map('trim') | reject('eq', '') | list }}"
-  custom_pincodes_2: "{{ custom_pincode_2_var.split(';') | map('trim') | reject('eq', '') | list }}"
-  custom_pincodes_3: "{{ custom_pincode_3_var.split(';') | map('trim') | reject('eq', '') | list }}"
+  pin_codes: >-
+    {{ (pin_list_var if pin_list_var is string else pin_list_var | map('string') | join(';'))
+       .split(';') | map('trim') | reject('eq', '') | list }}
+  rfid_tags: >-
+    {{ (rfid_list_var if rfid_list_var is string else rfid_list_var | map('string') | join(';'))
+       .split(';') | map('trim') | reject('eq', '') | list }}
+  # PIN codes and RFID tags are both matched against the keypad action_code.
+  valid_codes: "{{ pin_codes + rfid_tags }}"
+  custom_pincodes_1: >-
+    {{ (custom_pincode_1_var if custom_pincode_1_var is string else custom_pincode_1_var | map('string') | join(';'))
+       .split(';') | map('trim') | reject('eq', '') | list }}
+  custom_pincodes_2: >-
+    {{ (custom_pincode_2_var if custom_pincode_2_var is string else custom_pincode_2_var | map('string') | join(';'))
+       .split(';') | map('trim') | reject('eq', '') | list }}
+  custom_pincodes_3: >-
+    {{ (custom_pincode_3_var if custom_pincode_3_var is string else custom_pincode_3_var | map('string') | join(';'))
+       .split(';') | map('trim') | reject('eq', '') | list }}
   pin_actions_list: "{{ custom_pincodes_1 + custom_pincodes_2 + custom_pincodes_3 }}"
 
 triggers:
@@ -302,7 +338,7 @@ actions:
               keypad_action: "{{ trigger.payload_json.action | default('') | string }}"
               keypad_code: "{{ trigger.payload_json.action_code | default('') | string | trim }}"
               keypad_code_known: >-
-                {{ trigger.payload_json.action_code | default('') | string | trim in pin_list }}
+                {{ trigger.payload_json.action_code | default('') | string | trim in valid_codes }}
           - choose:
               - conditions:
                   - condition: template
@@ -358,13 +394,17 @@ actions:
                   - condition: template
                     value_template: "{{ keypad_code in custom_pincodes_3 }}"
                 sequence: !input custom_action_3
-              # Unknown numeric code: tell the keypad it was refused, on the
-              # keypad it was typed on only.
+              # Unknown PIN code or RFID tag used on an arm/disarm request:
+              # tell the keypad it was refused, on the keypad it was used on
+              # only. Keyed on the action so a non-numeric RFID tag is rejected
+              # too, and so keypad state updates carrying no code are ignored.
               - conditions:
                   - condition: template
                     value_template: >-
-                      {{ not keypad_code_known and keypad_code not in pin_actions_list
-                         and keypad_code | int(-1) != -1 }}
+                      {{ keypad_action in ['arm_all_zones', 'arm_day_zones', 'arm_night_zones', 'disarm']
+                         and keypad_code != ''
+                         and not keypad_code_known
+                         and keypad_code not in pin_actions_list }}
                 sequence:
                   - action: mqtt.publish
                     data:

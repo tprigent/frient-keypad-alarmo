@@ -40,6 +40,16 @@ sont mis à jour, mais les actions ne partent qu'une fois.
   La comparaison est maintenant exacte (et accepte plusieurs codes séparés par `;`).
 
 **Ajouts**
+- **Saisie des codes une entrée par ligne** (sélecteurs `text` multiples) au lieu
+  d'une chaîne à séparer par des `;` : plus de problème d'espaces ou de
+  séparateur oublié. Les codes PIN et les tags RFID ont chacun leur liste, et les
+  codes spéciaux aussi. Une ancienne configuration au format `a; b` reste
+  acceptée telle quelle.
+- Retour `invalid_code` sur le clavier également pour un **tag RFID inconnu** :
+  la version amont ne répondait qu'aux codes numériques (`| int(-1) != -1`), un
+  badge non autorisé ne provoquait donc aucun retour. Le rejet est maintenant
+  déclenché par l'action d'armement/désarmement, ce qui couvre PIN et RFID sans
+  répondre aux messages d'état sans code.
 - Resynchronisation des claviers au démarrage de Home Assistant, et à chaque
   exécution manuelle de l'automatisation (utile quand un clavier a été
   débranché / réappairé et affiche un état obsolète). Les actions utilisateur ne
@@ -60,11 +70,20 @@ Le format des messages MQTT publiés est inchangé
 2. Créer une automatisation à partir du blueprint et renseigner :
    - Clavier 1 : `zigbee2mqtt/Keypad1` et `zigbee2mqtt/Keypad1/set`
    - Clavier 2 : `zigbee2mqtt/Keypad2` et `zigbee2mqtt/Keypad2/set`
-   - la liste des codes PIN / tags RFID, communs aux deux claviers
+   - les codes PIN et les tags RFID (une entrée par code, bouton « Ajouter »),
+     communs aux deux claviers
    - l'entité `alarm_control_panel` et son code
 
 > Le nom du clavier dans les topics est son *friendly name* Zigbee2MQTT.
 > Si un clavier est renommé dans Z2M, mettre à jour l'automatisation.
+
+### Trouver l'identifiant d'un tag RFID
+
+Le tag est identifié par l'`action_code` publié par Zigbee2MQTT au moment où le
+badge est présenté. Pour le relever : **Paramètres → Appareils et services →
+MQTT → Écouter un sujet**, s'abonner à `zigbee2mqtt/Keypad1`, puis passer le
+badge. Copier la valeur de `action_code` (par ex. `+ACF5678B`) dans la liste des
+tags RFID.
 
 Home Assistant 2024.10 minimum (syntaxe `triggers:` / `actions:`).
 
