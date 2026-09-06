@@ -46,7 +46,7 @@ blueprint:
     code:
       name: Code
       description:
-        "Optional. Leave empty and any button press is accepted without a code.\n
+        "A valid code is required for every action, the SOS button included.\n
         The codes below are the only ones checked, and the panel is driven
         without passing a code to it, so it must not ask for one: in Alarmo,
         General > Arming, turn OFF \"Code required for arming\" and \"Code
@@ -62,7 +62,6 @@ blueprint:
             publishes when the tag is presented (Settings > Devices & Services >
             MQTT > Listen to a topic).\n
             Examples: 1234, +ACF5678B"
-          default: []
           selector:
             text:
               multiple: true
@@ -203,29 +202,51 @@ actions:
               keypad_action: "{{ trigger.payload_json.action | default('') | string }}"
               keypad_code: "{{ trigger.payload_json.action_code | default('') | string | trim }}"
               panel_service: "{{ button_services.get(keypad_action, 'none') }}"
-              # No code configured, or the SOS button: nothing to check.
-              code_ok: >-
-                {{ valid_codes | count == 0
-                   or keypad_action == 'emergency'
-                   or keypad_code in valid_codes }}
+              # Every action needs a valid code, the SOS button included. Drop
+              # `keypad_action == 'emergency' or` from the line below to let SOS
+              # through without one.
+              code_ok: "{{ keypad_code != '' and keypad_code in valid_codes }}"
+              # The keypad quotes a transaction number on an arm / disarm
+              # request and waits for it to come back. Without that reply it
+              # reports the code as refused, whatever the panel does next.
+              ack_transaction: "{{ trigger.payload_json.action_transaction | default('') }}"
+              can_reply: >-
+                {{ ack_transaction != ''
+                   and keypad_action in ['arm_all_zones', 'arm_day_zones', 'arm_night_zones', 'disarm'] }}
           - choose:
+              # Code accepted: acknowledge on the keypad first, so it accepts
+              # the code, then drive the panel. The panel state change that
+              # follows refreshes both keypads a moment later.
               - conditions:
                   - condition: template
                     value_template: "{{ panel_service != 'none' and code_ok }}"
                 sequence:
+                  - if:
+                      - condition: template
+                        value_template: "{{ can_reply }}"
+                    then:
+                      - action: mqtt.publish
+                        data:
+                          topic: "{{ source_set_topic }}"
+                          payload: >-
+                            {{ { 'arm_mode': {
+                                   'transaction': ack_transaction,
+                                   'mode': keypad_action } } | to_json }}
                   - action: "alarm_control_panel.{{ panel_service }}"
                     target:
                       entity_id: "{{ panel_entity }}"
+              # Code refused: answer on the keypad it was typed on, and there
+              # only.
               - conditions:
                   - condition: template
-                    value_template: "{{ panel_service != 'none' and not code_ok }}"
+                    value_template: "{{ panel_service != 'none' and not code_ok and can_reply }}"
                 sequence:
                   - action: mqtt.publish
                     data:
                       topic: "{{ source_set_topic }}"
                       payload: >-
                         {{ { 'arm_mode': {
-                               'transaction': trigger.payload_json.action_transaction | default(''),
+                               'transaction': ack_transaction,
                                'mode': 'invalid_code' } } | to_json }}
             default: []
     # The panel changed state, Home Assistant started, or the automation was run

@@ -16,7 +16,7 @@ Neuf champs, dont trois obligatoires.
 | --- | --- | --- |
 | Panneau | Panneau d'alarme | l'entité `alarm_control_panel`, sélectionnée une fois |
 | Claviers | Clavier 1, Clavier 2 | le nom dans *Zigbee2MQTT → Devices* (la casse compte) |
-| Code | Codes acceptés | optionnel, une entrée par code PIN ou tag RFID |
+| Code | Codes acceptés | obligatoire, une entrée par code PIN ou tag RFID |
 | Boutons | Absent, Maison, Nuit, Désarmer, SOS | l'action déclenchée sur le panneau |
 
 Les topics MQTT sont déduits du nom : `zigbee2mqtt/<nom>` pour l'état,
@@ -25,10 +25,13 @@ Les topics MQTT sont déduits du nom : `zigbee2mqtt/<nom>` pour l'état,
 **Le code est défini une seule fois**, dans la section Code, et rien d'autre
 n'est à renseigner ailleurs :
 
-- liste vide → tout appui est accepté sans code ;
-- liste remplie → seuls ces codes et tags ouvrent l'action, un code inconnu
-  renvoie `invalid_code` au clavier utilisé (et à lui seul) ;
-- le bouton SOS ne demande jamais de code.
+- **toute action exige un code valide**, y compris le bouton SOS ;
+- un code inconnu, ou une action lancée sans code, renvoie `invalid_code` au
+  clavier utilisé (et à lui seul) ;
+- pour exempter le SOS, une ligne à changer dans le blueprint — la variable
+  `code_ok` porte le commentaire qui l'explique. **À savoir** : si ton clavier
+  n'envoie aucun code avec l'appui SOS (cas courant, c'est un bouton de
+  panique), l'exiger revient à désactiver ce bouton.
 
 **Prérequis côté Alarmo** : les codes ci-dessus sont la seule autorité, le
 panneau est piloté **sans code transmis**. Dans Alarmo, *Général → Armement*,
@@ -89,6 +92,12 @@ chaque exécution manuelle de l'automatisation — utile après un réappairage 
 - Le retour `invalid_code` ne part que vers le clavier utilisé.
 
 **Bugs corrigés**
+- Un code accepté n'était **jamais confirmé au clavier**. Le clavier envoie un
+  numéro de transaction avec chaque demande d'armement et attend qu'on le lui
+  renvoie ; sans cette réponse il considère le code comme refusé, quoi que
+  fasse le panneau ensuite. La version amont ne renvoyait la transaction que
+  sur code invalide. L'accusé de réception est maintenant publié sur le clavier
+  utilisé avant même l'appel au panneau.
 - `armed_home` n'avait **aucun déclencheur** : la branche correspondante était
   morte, passer en *Armed Home* ne mettait jamais le clavier à jour.
 - Les codes n'étaient pas « trimés » : `1234; 5678` produisait `" 5678"`, qui ne
