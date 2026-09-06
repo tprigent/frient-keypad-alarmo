@@ -39,6 +39,18 @@ sont mis à jour, mais les actions ne partent qu'une fois.
   spécial `1` déclenchait son action pour *tout* code contenant un `1`.
   La comparaison est maintenant exacte (et accepte plusieurs codes séparés par `;`).
 
+**Gestion des codes centralisée**
+- Les codes du blueprint (PIN + tags RFID) sont **la seule autorité** : le
+  panneau est armé / désarmé **sans transmettre de code**. Il n'y a donc plus
+  d'entrée « Control Panel Pincode » à renseigner en double.
+- **Prérequis côté Alarmo** : *Général → Armement*, désactiver **« Code requis
+  pour l'armement »** et **« Code requis pour le désarmement »**. Sans ça,
+  Alarmo rejette l'appel de service et l'automatisation tombe en erreur.
+- **Conséquence à connaître** : Alarmo devient désarmable sans code par les
+  autres chemins (carte du tableau de bord, autre automatisation, API REST).
+  La protection par code ne vaut plus que pour les claviers. Si ce compromis ne
+  te convient pas, il faut repasser à un code transmis à Alarmo.
+
 **Ajouts**
 - **Saisie des codes une entrée par ligne** (sélecteurs `text` multiples) au lieu
   d'une chaîne à séparer par des `;` : plus de problème d'espaces ou de
@@ -72,7 +84,9 @@ Le format des messages MQTT publiés est inchangé
    - Clavier 2 : `zigbee2mqtt/Keypad2` et `zigbee2mqtt/Keypad2/set`
    - les codes PIN et les tags RFID (une entrée par code, bouton « Ajouter »),
      communs aux deux claviers
-   - l'entité `alarm_control_panel` et son code
+   - l'entité `alarm_control_panel` (une seule fois, aucun code à fournir)
+3. Dans Alarmo : *Général → Armement*, désactiver « Code requis pour
+   l'armement » et « Code requis pour le désarmement ».
 
 > Le nom du clavier dans les topics est son *friendly name* Zigbee2MQTT.
 > Si un clavier est renommé dans Z2M, mettre à jour l'automatisation.

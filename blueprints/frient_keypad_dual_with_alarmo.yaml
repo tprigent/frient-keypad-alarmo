@@ -4,6 +4,9 @@ blueprint:
     "Synchronise TWO Zigbee2MQTT keypads with a single alarm control panel.\n
     The state of the alarm control panel is pushed to both keypads, and either
     keypad can arm / disarm the panel.\n
+    Codes are managed in one place, here: the PIN codes and RFID tags listed in
+    this automation are what authorises arming and disarming, so the panel
+    itself must not require a code.\n
     Adapted from https://github.com/Bygood91/frient_keypad_alarmo (single keypad)."
   domain: automation
   homeassistant:
@@ -79,7 +82,12 @@ blueprint:
               multiple: true
     control_panel:
       name: Control Panel
-      description: "Manage Control Panel settings and actions triggered by state changes."
+      description:
+        "The alarm control panel to keep in sync with the keypads.\n
+        IMPORTANT: the codes entered above are the only ones checked, and the
+        panel is armed / disarmed without passing a code. Your panel must
+        therefore not require one: in Alarmo, General > Arming, turn OFF
+        \"Code required for arming\" and \"Code required for disarming\"."
       icon: mdi:shield-lock
       collapsed: false
       input:
@@ -91,11 +99,6 @@ blueprint:
               domain:
                 - alarm_control_panel
               multiple: false
-        pin_control_panel:
-          name: Control Panel Pincode
-          description: The Valid PIN Code to be used for controlling Control Panel.
-          selector:
-            text: {}
     alarmo_actions:
       name: Actions Triggered by Control Panel State Change
       description: "Define the actions to be performed whenever the alarm panel state changes (e.g., armed, disarmed, triggered)."
@@ -337,45 +340,25 @@ actions:
           - variables:
               keypad_action: "{{ trigger.payload_json.action | default('') | string }}"
               keypad_code: "{{ trigger.payload_json.action_code | default('') | string | trim }}"
-              keypad_code_known: >-
-                {{ trigger.payload_json.action_code | default('') | string | trim in valid_codes }}
+              keypad_code_known: "{{ keypad_code in valid_codes }}"
+              # Empty for anything that is not an arm / disarm request.
+              panel_service: >-
+                {% set services = {
+                  'arm_all_zones': 'alarm_arm_away',
+                  'arm_day_zones': 'alarm_arm_home',
+                  'arm_night_zones': 'alarm_arm_night',
+                  'disarm': 'alarm_disarm' } %}
+                {{ services.get(keypad_action, '') }}
           - choose:
+              # Known code on an arm / disarm request. No code is passed to the
+              # panel: the code list above is what authorises the request.
               - conditions:
                   - condition: template
-                    value_template: "{{ keypad_code_known and keypad_action == 'arm_all_zones' }}"
+                    value_template: "{{ keypad_code_known and panel_service != '' }}"
                 sequence:
-                  - action: alarm_control_panel.alarm_arm_away
+                  - action: "alarm_control_panel.{{ panel_service }}"
                     target:
-                      entity_id: !input control_panel
-                    data:
-                      code: !input pin_control_panel
-              - conditions:
-                  - condition: template
-                    value_template: "{{ keypad_code_known and keypad_action == 'arm_day_zones' }}"
-                sequence:
-                  - action: alarm_control_panel.alarm_arm_home
-                    target:
-                      entity_id: !input control_panel
-                    data:
-                      code: !input pin_control_panel
-              - conditions:
-                  - condition: template
-                    value_template: "{{ keypad_code_known and keypad_action == 'arm_night_zones' }}"
-                sequence:
-                  - action: alarm_control_panel.alarm_arm_night
-                    target:
-                      entity_id: !input control_panel
-                    data:
-                      code: !input pin_control_panel
-              - conditions:
-                  - condition: template
-                    value_template: "{{ keypad_code_known and keypad_action == 'disarm' }}"
-                sequence:
-                  - action: alarm_control_panel.alarm_disarm
-                    target:
-                      entity_id: !input control_panel
-                    data:
-                      code: !input pin_control_panel
+                      entity_id: "{{ panel_entity }}"
               - conditions:
                   - condition: template
                     value_template: "{{ keypad_action == 'emergency' }}"
@@ -401,7 +384,7 @@ actions:
               - conditions:
                   - condition: template
                     value_template: >-
-                      {{ keypad_action in ['arm_all_zones', 'arm_day_zones', 'arm_night_zones', 'disarm']
+                      {{ panel_service != ''
                          and keypad_code != ''
                          and not keypad_code_known
                          and keypad_code not in pin_actions_list }}
