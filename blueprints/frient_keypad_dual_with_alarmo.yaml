@@ -1,308 +1,128 @@
 blueprint:
-  name: "Frient Keypad x2 with Alarm Control Panel (ex: Alarmo)"
+  name: "Frient Keypads x2 with Alarmo"
   description:
-    "Synchronise TWO Zigbee2MQTT keypads with a single alarm control panel.\n
-    The state of the alarm control panel is pushed to both keypads, and either
-    keypad can arm / disarm the panel.\n
-    Codes are managed in one place, here: the PIN codes and RFID tags listed in
-    this automation are what authorises arming and disarming, so the panel
-    itself must not require a code.\n
+    "Keep two Zigbee2MQTT keypads and one alarm panel in sync.\n
+    The panel state is mirrored on both keypads, and each keypad button is
+    mapped to the panel action of your choice.\n
     Adapted from https://github.com/Bygood91/frient_keypad_alarmo (single keypad)."
   domain: automation
   homeassistant:
     min_version: 2024.10.0
   input:
-    keypads:
-      name: Keypads
-      description:
-        "The two Zigbee2MQTT keypads to keep in sync. Their MQTT topics are
-        built from the names below, so there is nothing else to enter.\n
-        Both keypads share the same codes, the same alarm panel and the same actions."
-      icon: mdi:dialpad
-      collapsed: false
-      input:
-        keypad_1_name:
-          name: Name of Keypad 1 in Zigbee2MQTT
-          description:
-            "The friendly name of the keypad, spelled exactly as in
-            Zigbee2MQTT > Devices (it is case sensitive).\n
-            Example: Keypad1 gives the topics zigbee2mqtt/Keypad1 and
-            zigbee2mqtt/Keypad1/set."
-          selector:
-            text: {}
-        keypad_2_name:
-          name: Name of Keypad 2 in Zigbee2MQTT
-          description: "Example: Keypad2"
-          selector:
-            text: {}
-    keypad_codes:
-      name: Keypad Codes
-      description: "PIN codes and RFID tags accepted by both keypads. At least one code or tag is required."
-      icon: mdi:key-variant
-      collapsed: false
-      input:
-        pin_list:
-          name: Keypad PIN Codes
-          description:
-            "The PIN codes accepted by both keypads. Click \"Add\" to enter one
-            code per line.\n Example: 1234\n
-            Leave empty if you only use RFID tags."
-          default: []
-          selector:
-            text:
-              multiple: true
-        rfid_list:
-          name: Keypad RFID Tags
-          description:
-            "The RFID tags accepted by both keypads. Click \"Add\" to enter one
-            tag per line.\n The tag ID is the action_code published by
-            Zigbee2MQTT when the tag is presented to the keypad (visible in the
-            Z2M logs, or with Settings > Devices & Services > MQTT > Listen to a
-            topic). Example: +ACF5678B\n
-            Leave empty if you do not use RFID tags."
-          default: []
-          selector:
-            text:
-              multiple: true
-    control_panel:
-      name: Control Panel
-      description:
-        "The alarm control panel to keep in sync with the keypads.\n
-        IMPORTANT: the codes entered above are the only ones checked, and the
-        panel is armed / disarmed without passing a code. Your panel must
-        therefore not require one: in Alarmo, General > Arming, turn OFF
-        \"Code required for arming\" and \"Code required for disarming\"."
+    panel:
+      name: Alarm panel
       icon: mdi:shield-lock
       collapsed: false
       input:
-        control_panel:
-          name: Control Panel
-          description: "An alarm control panel. \nExample: Alarmo or https://www.home-assistant.io/integrations/manual"
+        alarm_panel:
+          name: Alarm panel
+          description:
+            "The panel the keypads control, and whose state they display.\n
+            Example: Alarmo."
           selector:
             entity:
               domain:
                 - alarm_control_panel
               multiple: false
-    alarmo_actions:
-      name: Actions Triggered by Control Panel State Change
-      description: "Define the actions to be performed whenever the alarm panel state changes (e.g., armed, disarmed, triggered)."
-      icon: mdi:shield-alert
-      collapsed: true
+    keypads:
+      name: Keypads
+      description:
+        "The names of your two keypads in Zigbee2MQTT > Devices, spelled exactly
+        as they are there (case sensitive). Their MQTT topics are derived from
+        the names: zigbee2mqtt/<name> and zigbee2mqtt/<name>/set."
+      icon: mdi:dialpad
+      collapsed: false
       input:
-        action_arming:
-          name: Action Arming
-          description:
-            An action to be performed when the alarm panel changes to the arming
-            state.
-          default: []
+        keypad_1_name:
+          name: Keypad 1
+          description: "Example: Keypad1"
           selector:
-            action: {}
-        action_armed_home:
-          name: Action Armed Home
-          description:
-            An action to be performed when the alarm panel changes to the armed
-            home state.
-          default: []
+            text: {}
+        keypad_2_name:
+          name: Keypad 2
+          description: "Example: Keypad2"
           selector:
-            action: {}
-        action_armed_night:
-          name: Action Armed Night
-          description:
-            An action to be performed when the alarm panel changes to the armed
-            night state.
-          default: []
-          selector:
-            action: {}
-        action_armed_away:
-          name: Action Armed Away
-          description:
-            An action to be performed when the alarm panel changes to the armed
-            away state.
-          default: []
-          selector:
-            action: {}
-        action_armed_vacation:
-          name: Action Armed Vacation
-          description:
-            An action to be performed when the alarm panel changes to the armed
-            vacation state.
-          default: []
-          selector:
-            action: {}
-        action_disarmed:
-          name: Action Disarmed
-          description:
-            An action to be performed when the alarm panel changes to the disarmed
-            state.
-          default: []
-          selector:
-            action: {}
-        action_pending:
-          name: Action Pending
-          description:
-            An action to be performed when the alarm panel changes to the pending
-            state.
-          default: []
-          selector:
-            action: {}
-        action_panic:
-          name: Action Panic
-          description:
-            An action to be performed when the panic / SOS button of one of the
-            keypads is pressed.
-          default: []
-          selector:
-            action: {}
-        action_alarm:
-          name: Action Alarm
-          description: An action to be performed when alarm is triggered is pressed.
-          default: []
-          selector:
-            action: {}
-    custom_action_1:
-      name: Special Pin Code 1
-      description: "Set up a specific action to be triggered when PIN code 1 is entered (PIN code + any arming button), on either keypad."
-      icon: mdi:gesture-tap-button
-      collapsed: true
+            text: {}
+    code:
+      name: Code
+      description:
+        "Optional. Leave empty and any button press is accepted without a code.\n
+        The codes below are the only ones checked, and the panel is driven
+        without passing a code to it, so it must not ask for one: in Alarmo,
+        General > Arming, turn OFF \"Code required for arming\" and \"Code
+        required for disarming\"."
+      icon: mdi:key-variant
+      collapsed: false
       input:
-        custom_pincode_1:
-          name: Pin Code 1
+        codes:
+          name: Accepted codes
           description:
-            "The PIN codes or RFID tags that trigger custom action 1 from a
-            keypad. Click \"Add\" to enter one code per line.\n
-            You can either reuse a code from the keypad code list or enter a new
-            code dedicated to this action."
+            "PIN codes and RFID tags accepted by both keypads, one entry per
+            code. An RFID tag is identified by the action_code Zigbee2MQTT
+            publishes when the tag is presented (Settings > Devices & Services >
+            MQTT > Listen to a topic).\n
+            Examples: 1234, +ACF5678B"
           default: []
           selector:
             text:
               multiple: true
-        custom_action_1:
-          name: Action for Pin Code 1
-          description: "Define the action to execute when the PIN code 1 is entered on a keypad."
-          default: []
-          selector:
-            action: {}
-    custom_action_2:
-      name: Special Pin Code 2
-      description: "Set up a specific action to be triggered when PIN code 2 is entered (PIN code + any arming button), on either keypad."
+    buttons:
+      name: Buttons
+      description:
+        "What each keypad button does on the panel. The SOS button never asks
+        for a code."
       icon: mdi:gesture-tap-button
-      collapsed: true
+      collapsed: false
       input:
-        custom_pincode_2:
-          name: Pin Code 2
-          description:
-            "The PIN codes or RFID tags that trigger custom action 2 from a
-            keypad. Click \"Add\" to enter one code per line.\n
-            You can either reuse a code from the keypad code list or enter a new
-            code dedicated to this action."
-          default: []
-          selector:
-            text:
-              multiple: true
-        custom_action_2:
-          name: Action for Pin Code 2
-          description: "Define the action to execute when the PIN code 2 is entered on a keypad."
-          default: []
-          selector:
-            action: {}
-    custom_action_3:
-      name: Special Pin Code 3
-      description: "Set up a specific action to be triggered when PIN code 3 is entered (PIN code + any arming button), on either keypad."
-      icon: mdi:gesture-tap-button
-      collapsed: true
-      input:
-        custom_pincode_3:
-          name: Pin Code 3
-          description:
-            "The PIN codes or RFID tags that trigger custom action 3 from a
-            keypad. Click \"Add\" to enter one code per line.\n
-            You can either reuse a code from the keypad code list or enter a new
-            code dedicated to this action."
-          default: []
-          selector:
-            text:
-              multiple: true
-        custom_action_3:
-          name: Action for Pin Code 3
-          description: "Define the action to execute when the PIN code 3 is entered on a keypad."
-          default: []
-          selector:
-            action: {}
+        button_away:
+          name: Away button
+          default: alarm_arm_away
+          selector: &panel_action
+            select:
+              mode: dropdown
+              options:
+                - label: Arm away
+                  value: alarm_arm_away
+                - label: Arm home
+                  value: alarm_arm_home
+                - label: Arm night
+                  value: alarm_arm_night
+                - label: Arm vacation
+                  value: alarm_arm_vacation
+                - label: Disarm
+                  value: alarm_disarm
+                - label: Trigger the alarm
+                  value: alarm_trigger
+                - label: Do nothing
+                  value: none
+        button_home:
+          name: Home / day button
+          default: alarm_arm_home
+          selector: *panel_action
+        button_night:
+          name: Night button
+          default: alarm_arm_night
+          selector: *panel_action
+        button_disarm:
+          name: Disarm button
+          default: alarm_disarm
+          selector: *panel_action
+        button_panic:
+          name: SOS button
+          default: alarm_trigger
+          selector: *panel_action
   source_url: https://github.com/tprigent/frient-keypad-alarmo/blob/main/blueprints/frient_keypad_dual_with_alarmo.yaml
 
-variables:
-  panel_entity: !input control_panel
-  # Z2M publishes a device on <base topic>/<friendly name>, and takes commands
-  # on the same topic with /set appended. Stray slashes and spaces are trimmed
-  # so "zigbee2mqtt/" or " Keypad1" still build a valid topic.
-  keypad_1_set_topic: >-
-    {{ (base_topic | string).strip('/ ') ~ '/' ~ (keypad_1_name | string).strip('/ ') ~ '/set' }}
-  keypad_2_set_topic: >-
-    {{ (base_topic | string).strip('/ ') ~ '/' ~ (keypad_2_name | string).strip('/ ') ~ '/set' }}
-  # Every keypad that has to mirror the panel state. Duplicates and blanks are
-  # dropped so a single publish happens per keypad.
-  keypad_set_topics: >-
-    {{ [keypad_1_set_topic, keypad_2_set_topic] | map('trim') | reject('eq', '') | unique | list }}
-  # Feedback (invalid code) must go back only to the keypad that was used.
-  source_set_topic: >-
-    {{ keypad_2_set_topic if (trigger is defined and trigger.id | default('') == 'keypad_2_mqtt')
-       else keypad_1_set_topic }}
-  panel_state: >-
-    {{ trigger.to_state.state if (trigger is defined and trigger.id | default('') == 'panel')
-       else states(panel_entity) }}
-  keypad_mode: >-
-    {% set modes = {
-      'arming': 'exit_delay',
-      'pending': 'entry_delay',
-      'armed_away': 'arm_all_zones',
-      'armed_vacation': 'arm_all_zones',
-      'armed_home': 'arm_day_zones',
-      'armed_night': 'arm_night_zones',
-      'disarmed': 'disarm',
-      'triggered': 'in_alarm' } %}
-    {{ modes.get(panel_state, '') }}
-  # Codes are entered one per line, but a single semicolon-separated string is
-  # still accepted so configurations made with an older version keep working.
-  base_topic: zigbee2mqtt
-  keypad_1_name: !input keypad_1_name
-  keypad_2_name: !input keypad_2_name
-  pin_list_var: !input pin_list
-  rfid_list_var: !input rfid_list
-  custom_pincode_1_var: !input custom_pincode_1
-  custom_pincode_2_var: !input custom_pincode_2
-  custom_pincode_3_var: !input custom_pincode_3
-  pin_codes: >-
-    {{ (pin_list_var if pin_list_var is string else pin_list_var | map('string') | join(';'))
-       .split(';') | map('trim') | reject('eq', '') | list }}
-  rfid_tags: >-
-    {{ (rfid_list_var if rfid_list_var is string else rfid_list_var | map('string') | join(';'))
-       .split(';') | map('trim') | reject('eq', '') | list }}
-  # PIN codes and RFID tags are both matched against the keypad action_code.
-  valid_codes: "{{ pin_codes + rfid_tags }}"
-  custom_pincodes_1: >-
-    {{ (custom_pincode_1_var if custom_pincode_1_var is string else custom_pincode_1_var | map('string') | join(';'))
-       .split(';') | map('trim') | reject('eq', '') | list }}
-  custom_pincodes_2: >-
-    {{ (custom_pincode_2_var if custom_pincode_2_var is string else custom_pincode_2_var | map('string') | join(';'))
-       .split(';') | map('trim') | reject('eq', '') | list }}
-  custom_pincodes_3: >-
-    {{ (custom_pincode_3_var if custom_pincode_3_var is string else custom_pincode_3_var | map('string') | join(';'))
-       .split(';') | map('trim') | reject('eq', '') | list }}
-  pin_actions_list: "{{ custom_pincodes_1 + custom_pincodes_2 + custom_pincodes_3 }}"
-
-# A trigger cannot read the variables above: they are rendered per run, while
-# triggers are set up once. trigger_variables is the way to reach a blueprint
-# input from a trigger, and is rendered once, when the automation is set up.
+# The Zigbee2MQTT base_topic. Change it here and in the variables below if
+# yours is not the default.
 trigger_variables:
-  # The Zigbee2MQTT base_topic. Change it here and in the variables below if
-  # yours is not the default.
   tv_base_topic: zigbee2mqtt
   tv_keypad_1_name: !input keypad_1_name
   tv_keypad_2_name: !input keypad_2_name
 
 triggers:
   - trigger: state
-    entity_id: !input control_panel
+    entity_id: !input alarm_panel
     to:
       - arming
       - pending
@@ -323,14 +143,54 @@ triggers:
     event: start
     id: resync
 
+variables:
+  panel_entity: !input alarm_panel
+  base_topic: zigbee2mqtt
+  keypad_1_name: !input keypad_1_name
+  keypad_2_name: !input keypad_2_name
+  keypad_1_set_topic: >-
+    {{ (base_topic | string).strip('/ ') ~ '/' ~ (keypad_1_name | string).strip('/ ') ~ '/set' }}
+  keypad_2_set_topic: >-
+    {{ (base_topic | string).strip('/ ') ~ '/' ~ (keypad_2_name | string).strip('/ ') ~ '/set' }}
+  # Every keypad that mirrors the panel. Duplicates are dropped so one message
+  # is published per keypad.
+  keypad_set_topics: "{{ [keypad_1_set_topic, keypad_2_set_topic] | unique | list }}"
+  # A refused code is answered on the keypad it was typed on only.
+  source_set_topic: >-
+    {{ keypad_2_set_topic if (trigger is defined and trigger.id | default('') == 'keypad_2_mqtt')
+       else keypad_1_set_topic }}
+  codes_var: !input codes
+  valid_codes: >-
+    {{ (codes_var if codes_var is string else codes_var | map('string') | join(';'))
+       .split(';') | map('trim') | reject('eq', '') | list }}
+  # Keypad button -> panel service, as configured above.
+  button_services:
+    arm_all_zones: !input button_away
+    arm_day_zones: !input button_home
+    arm_night_zones: !input button_night
+    disarm: !input button_disarm
+    emergency: !input button_panic
+  panel_state: >-
+    {{ trigger.to_state.state if (trigger is defined and trigger.id | default('') == 'panel')
+       else states(panel_entity) }}
+  # Panel state -> what the keypads display.
+  keypad_mode: >-
+    {% set modes = {
+      'arming': 'exit_delay',
+      'pending': 'entry_delay',
+      'armed_away': 'arm_all_zones',
+      'armed_vacation': 'arm_all_zones',
+      'armed_home': 'arm_day_zones',
+      'armed_night': 'arm_night_zones',
+      'disarmed': 'disarm',
+      'triggered': 'in_alarm' } %}
+    {{ modes.get(panel_state, '') }}
+
 conditions: []
 
 actions:
   - choose:
-      # ---------------------------------------------------------------
-      # A keypad sent something: arm / disarm the panel, run custom PIN
-      # actions, or reject the code on the keypad that was used.
-      # ---------------------------------------------------------------
+      # A keypad button was pressed.
       - conditions:
           - condition: trigger
             id:
@@ -342,54 +202,23 @@ actions:
           - variables:
               keypad_action: "{{ trigger.payload_json.action | default('') | string }}"
               keypad_code: "{{ trigger.payload_json.action_code | default('') | string | trim }}"
-              keypad_code_known: "{{ keypad_code in valid_codes }}"
-              # Empty for anything that is not an arm / disarm request.
-              panel_service: >-
-                {% set services = {
-                  'arm_all_zones': 'alarm_arm_away',
-                  'arm_day_zones': 'alarm_arm_home',
-                  'arm_night_zones': 'alarm_arm_night',
-                  'disarm': 'alarm_disarm' } %}
-                {{ services.get(keypad_action, '') }}
+              panel_service: "{{ button_services.get(keypad_action, 'none') }}"
+              # No code configured, or the SOS button: nothing to check.
+              code_ok: >-
+                {{ valid_codes | count == 0
+                   or keypad_action == 'emergency'
+                   or keypad_code in valid_codes }}
           - choose:
-              # Known code on an arm / disarm request. No code is passed to the
-              # panel: the code list above is what authorises the request.
               - conditions:
                   - condition: template
-                    value_template: "{{ keypad_code_known and panel_service != '' }}"
+                    value_template: "{{ panel_service != 'none' and code_ok }}"
                 sequence:
                   - action: "alarm_control_panel.{{ panel_service }}"
                     target:
                       entity_id: "{{ panel_entity }}"
               - conditions:
                   - condition: template
-                    value_template: "{{ keypad_action == 'emergency' }}"
-                sequence:
-                  - choose: []
-                    default: !input action_panic
-              - conditions:
-                  - condition: template
-                    value_template: "{{ keypad_code in custom_pincodes_1 }}"
-                sequence: !input custom_action_1
-              - conditions:
-                  - condition: template
-                    value_template: "{{ keypad_code in custom_pincodes_2 }}"
-                sequence: !input custom_action_2
-              - conditions:
-                  - condition: template
-                    value_template: "{{ keypad_code in custom_pincodes_3 }}"
-                sequence: !input custom_action_3
-              # Unknown PIN code or RFID tag used on an arm/disarm request:
-              # tell the keypad it was refused, on the keypad it was used on
-              # only. Keyed on the action so a non-numeric RFID tag is rejected
-              # too, and so keypad state updates carrying no code are ignored.
-              - conditions:
-                  - condition: template
-                    value_template: >-
-                      {{ panel_service != ''
-                         and keypad_code != ''
-                         and not keypad_code_known
-                         and keypad_code not in pin_actions_list }}
+                    value_template: "{{ panel_service != 'none' and not code_ok }}"
                 sequence:
                   - action: mqtt.publish
                     data:
@@ -399,10 +228,8 @@ actions:
                                'transaction': trigger.payload_json.action_transaction | default(''),
                                'mode': 'invalid_code' } } | to_json }}
             default: []
-    # -----------------------------------------------------------------
-    # Panel state change (or Home Assistant start / manual run): mirror
-    # the panel state on every keypad, then run the user actions.
-    # -----------------------------------------------------------------
+    # The panel changed state, Home Assistant started, or the automation was run
+    # by hand: show the panel state on both keypads.
     default:
       - condition: template
         value_template: "{{ keypad_mode != '' }}"
@@ -413,63 +240,6 @@ actions:
               data:
                 topic: "{{ repeat.item }}"
                 payload: "{{ { 'arm_mode': { 'mode': keypad_mode } } | to_json }}"
-      # User actions only run on a real panel state change, not on a resync.
-      - choose:
-          - conditions:
-              - condition: trigger
-                id: panel
-            sequence:
-              - choose:
-                  - conditions:
-                      - condition: template
-                        value_template: "{{ panel_state == 'arming' }}"
-                    sequence:
-                      - choose: []
-                        default: !input action_arming
-                  - conditions:
-                      - condition: template
-                        value_template: "{{ panel_state == 'pending' }}"
-                    sequence:
-                      - choose: []
-                        default: !input action_pending
-                  - conditions:
-                      - condition: template
-                        value_template: "{{ panel_state == 'armed_away' }}"
-                    sequence:
-                      - choose: []
-                        default: !input action_armed_away
-                  - conditions:
-                      - condition: template
-                        value_template: "{{ panel_state == 'armed_home' }}"
-                    sequence:
-                      - choose: []
-                        default: !input action_armed_home
-                  - conditions:
-                      - condition: template
-                        value_template: "{{ panel_state == 'armed_night' }}"
-                    sequence:
-                      - choose: []
-                        default: !input action_armed_night
-                  - conditions:
-                      - condition: template
-                        value_template: "{{ panel_state == 'armed_vacation' }}"
-                    sequence:
-                      - choose: []
-                        default: !input action_armed_vacation
-                  - conditions:
-                      - condition: template
-                        value_template: "{{ panel_state == 'disarmed' }}"
-                    sequence:
-                      - choose: []
-                        default: !input action_disarmed
-                  - conditions:
-                      - condition: template
-                        value_template: "{{ panel_state == 'triggered' }}"
-                    sequence:
-                      - choose: []
-                        default: !input action_alarm
-                default: []
-        default: []
 
 mode: parallel
 max: 10

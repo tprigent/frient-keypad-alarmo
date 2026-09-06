@@ -1,119 +1,117 @@
 # Frient Keypad + Alarmo
 
-Blueprints Home Assistant pour synchroniser un ou plusieurs claviers Frient
-(Zigbee2MQTT) avec un panneau d'alarme (Alarmo, `manual`, ...).
+Blueprints Home Assistant pour synchroniser des claviers Frient (Zigbee2MQTT)
+avec un panneau d'alarme (Alarmo, `manual`, ...).
 
 | Fichier | Usage |
 | --- | --- |
-| `blueprints/frient_keypad_with_alarmo.yaml` | Version amont, **1 clavier**. Copie conforme de [Bygood91/frient_keypad_alarmo](https://github.com/Bygood91/frient_keypad_alarmo), conservée comme référence. |
-| `blueprints/frient_keypad_dual_with_alarmo.yaml` | Version adaptée, **2 claviers** sur la même instance Alarmo. |
+| `blueprints/frient_keypad_dual_with_alarmo.yaml` | **2 claviers** sur un seul panneau. C'est celui à utiliser. |
+| `blueprints/frient_keypad_with_alarmo.yaml` | Version amont, **1 clavier**. Copie conforme de [Bygood91/frient_keypad_alarmo](https://github.com/Bygood91/frient_keypad_alarmo), gardée comme référence. |
 
-## Pourquoi une version dédiée à 2 claviers
+## Configuration
 
-Importer deux fois le blueprint amont (une automatisation par clavier)
-« fonctionne » à moitié : chaque changement d'état d'Alarmo déclenche **les deux**
-automatisations, donc toutes les actions utilisateur (`Action Armed Away`,
-notifications, sirène...) sont exécutées **en double**. Les codes PIN, le code du
-panneau et les actions doivent aussi être saisis deux fois.
+Neuf champs, dont trois obligatoires.
 
-La version `dual` n'utilise **qu'une seule automatisation** : les deux claviers
-sont mis à jour, mais les actions ne partent qu'une fois.
+| Section | Champ | Détail |
+| --- | --- | --- |
+| Panneau | Panneau d'alarme | l'entité `alarm_control_panel`, sélectionnée une fois |
+| Claviers | Clavier 1, Clavier 2 | le nom dans *Zigbee2MQTT → Devices* (la casse compte) |
+| Code | Codes acceptés | optionnel, une entrée par code PIN ou tag RFID |
+| Boutons | Absent, Maison, Nuit, Désarmer, SOS | l'action déclenchée sur le panneau |
 
-## Ce qui change par rapport à la version amont
+Les topics MQTT sont déduits du nom : `zigbee2mqtt/<nom>` pour l'état,
+`zigbee2mqtt/<nom>/set` pour les commandes.
 
-**Multi-clavier**
-- 2 jeux de topics MQTT (state + set) en entrée ; les publications d'état se font
-  en boucle sur les deux topics `/set` (via `repeat.for_each`), donc un seul
-  message par clavier.
-- Un déclencheur MQTT par clavier : les deux peuvent armer / désarmer.
-- Le retour `invalid_code` est renvoyé **uniquement au clavier utilisé**
-  (routage via `trigger.id`), pas aux deux.
+**Le code est défini une seule fois**, dans la section Code, et rien d'autre
+n'est à renseigner ailleurs :
 
-**Corrections de bugs de la version amont**
-- `armed_home` n'avait **aucun déclencheur** : la branche `panel_armed_home`
-  était donc morte. Résultat, passer en *Armed Home* ne mettait jamais le clavier
-  à jour (`arm_day_zones`) et `Action Armed Home` ne s'exécutait jamais. Corrigé.
-- Les codes PIN n'étaient pas « trimés » : `1234; 5678` produisait `" 5678"`,
-  qui ne correspondait à aucun code saisi. Les espaces sont maintenant ignorés.
-- Les codes PIN spéciaux étaient comparés avec `in` (sous-chaîne) : un code
-  spécial `1` déclenchait son action pour *tout* code contenant un `1`.
-  La comparaison est maintenant exacte (et accepte plusieurs codes séparés par `;`).
+- liste vide → tout appui est accepté sans code ;
+- liste remplie → seuls ces codes et tags ouvrent l'action, un code inconnu
+  renvoie `invalid_code` au clavier utilisé (et à lui seul) ;
+- le bouton SOS ne demande jamais de code.
 
-**Configuration réduite au minimum**
-- On saisit le **nom du clavier dans Zigbee2MQTT**, pas ses topics MQTT. Les
-  topics en sont déduits : `zigbee2mqtt/<nom>` pour l'état et
-  `zigbee2mqtt/<nom>/set` pour les commandes.
-  Les déclencheurs MQTT y accèdent via `trigger_variables`, seule façon pour un
-  déclencheur de lire une entrée de blueprint (il est monté une fois au
-  démarrage, alors que les variables normales sont rendues à chaque exécution).
-- 4 champs de topics deviennent 2 champs de noms : plus de `/set` oublié ni de
-  faute de frappe entre l'état et la commande.
+**Prérequis côté Alarmo** : les codes ci-dessus sont la seule autorité, le
+panneau est piloté **sans code transmis**. Dans Alarmo, *Général → Armement*,
+désactiver « Code requis pour l'armement » et « Code requis pour le
+désarmement » — sinon l'appel de service échoue.
+Conséquence à connaître : Alarmo devient désarmable sans code par les autres
+chemins (carte du tableau de bord, autre automatisation, API REST).
 
-**Gestion des codes centralisée**
-- Les codes du blueprint (PIN + tags RFID) sont **la seule autorité** : le
-  panneau est armé / désarmé **sans transmettre de code**. Il n'y a donc plus
-  d'entrée « Control Panel Pincode » à renseigner en double.
-- **Prérequis côté Alarmo** : *Général → Armement*, désactiver **« Code requis
-  pour l'armement »** et **« Code requis pour le désarmement »**. Sans ça,
-  Alarmo rejette l'appel de service et l'automatisation tombe en erreur.
-- **Conséquence à connaître** : Alarmo devient désarmable sans code par les
-  autres chemins (carte du tableau de bord, autre automatisation, API REST).
-  La protection par code ne vaut plus que pour les claviers. Si ce compromis ne
-  te convient pas, il faut repasser à un code transmis à Alarmo.
+### Mapping des boutons
 
-**Ajouts**
-- **Saisie des codes une entrée par ligne** (sélecteurs `text` multiples) au lieu
-  d'une chaîne à séparer par des `;` : plus de problème d'espaces ou de
-  séparateur oublié. Les codes PIN et les tags RFID ont chacun leur liste, et les
-  codes spéciaux aussi. Une ancienne configuration au format `a; b` reste
-  acceptée telle quelle.
-- Retour `invalid_code` sur le clavier également pour un **tag RFID inconnu** :
-  la version amont ne répondait qu'aux codes numériques (`| int(-1) != -1`), un
-  badge non autorisé ne provoquait donc aucun retour. Le rejet est maintenant
-  déclenché par l'action d'armement/désarmement, ce qui couvre PIN et RFID sans
-  répondre aux messages d'état sans code.
-- Resynchronisation des claviers au démarrage de Home Assistant, et à chaque
-  exécution manuelle de l'automatisation (utile quand un clavier a été
-  débranché / réappairé et affiche un état obsolète). Les actions utilisateur ne
-  sont pas rejouées dans ce cas.
-- Prise en charge de `armed_vacation` (état Alarmo) avec son action dédiée.
-- Les 8 branches quasi identiques de la version amont sont remplacées par une
-  table état → mode clavier, ce qui évite ce type d'oubli à l'avenir.
+Chaque bouton du clavier se voit attribuer une action parmi : armer absent,
+armer maison, armer nuit, armer vacances, désarmer, déclencher l'alarme, ou ne
+rien faire. Les valeurs par défaut correspondent au marquage des touches.
 
-Le format des messages MQTT publiés est inchangé
-(`{"arm_mode": {"mode": "..."}}`), les noms des entrées d'action sont conservés.
+En sens inverse, l'état du panneau est affiché sur les deux claviers sans rien à
+configurer :
+
+| État du panneau | Affichage clavier |
+| --- | --- |
+| `arming` / `pending` | `exit_delay` / `entry_delay` |
+| `armed_away`, `armed_vacation` | `arm_all_zones` |
+| `armed_home` / `armed_night` | `arm_day_zones` / `arm_night_zones` |
+| `disarmed` / `triggered` | `disarm` / `in_alarm` |
+
+Les claviers sont aussi resynchronisés au démarrage de Home Assistant et à
+chaque exécution manuelle de l'automatisation — utile après un réappairage Z2M.
 
 ## Installation
 
 1. Copier `blueprints/frient_keypad_dual_with_alarmo.yaml` dans
-   `config/blueprints/automation/<votre_dossier>/` puis recharger les
-   automatisations (ou importer l'URL du fichier via **Paramètres → Automatisations
-   → Blueprints → Importer**).
-2. Créer une automatisation à partir du blueprint et renseigner :
-   - le nom des deux claviers tel qu'il apparaît dans *Zigbee2MQTT → Devices*
-     (`Keypad1`, `Keypad2`...) — la casse compte
-   - les codes PIN et les tags RFID (une entrée par code, bouton « Ajouter »),
-     communs aux deux claviers
-   - l'entité `alarm_control_panel` (une seule fois, aucun code à fournir)
-3. Dans Alarmo : *Général → Armement*, désactiver « Code requis pour
-   l'armement » et « Code requis pour le désarmement ».
+   `config/blueprints/automation/<un_sous_dossier>/`, puis *Outils de
+   développement → YAML → Recharger les automatisations*.
+   Le fichier ne doit pas être dans `automations.yaml` ni tiré par un
+   `!include` : c'est un modèle, pas une automatisation.
+2. *Paramètres → Automatisations → Blueprints*, créer une automatisation à
+   partir du blueprint et remplir les neuf champs.
+3. Dans Alarmo, désactiver les deux options « code requis » (voir plus haut).
 
-> Si un clavier est renommé dans Zigbee2MQTT, il faut mettre à jour
-> l'automatisation : le nom est ce qui construit les topics.
-> Le préfixe `zigbee2mqtt` est en dur (c'est le `base_topic` par défaut de Z2M).
-> Si tu l'as changé dans Zigbee2MQTT, il y a deux lignes à adapter dans le
-> blueprint : `tv_base_topic` sous `trigger_variables`, et `base_topic` sous
-> `variables`.
+> Si un clavier est renommé dans Zigbee2MQTT, mettre à jour l'automatisation :
+> le nom est ce qui construit les topics.
+> Le préfixe `zigbee2mqtt` est en dur (c'est le `base_topic` par défaut de Z2M) ;
+> si tu l'as changé, deux lignes sont à adapter dans le blueprint,
+> `tv_base_topic` sous `trigger_variables` et `base_topic` sous `variables`.
 
 ### Trouver l'identifiant d'un tag RFID
 
-Le tag est identifié par l'`action_code` publié par Zigbee2MQTT au moment où le
-badge est présenté. Pour le relever : **Paramètres → Appareils et services →
-MQTT → Écouter un sujet**, s'abonner à `zigbee2mqtt/Keypad1`, puis passer le
-badge. Copier la valeur de `action_code` (par ex. `+ACF5678B`) dans la liste des
-tags RFID.
+*Paramètres → Appareils et services → MQTT → Écouter un sujet*, s'abonner à
+`zigbee2mqtt/Keypad1`, puis passer le badge. Copier la valeur de `action_code`
+(par ex. `+ACF5678B`) dans la liste des codes.
 
-Home Assistant 2024.10 minimum (syntaxe `triggers:` / `actions:`).
+## Différences avec la version amont
+
+**Multi-clavier**
+- Importer deux fois le blueprint amont exécute les actions **en double** à
+  chaque changement d'état du panneau. Ici une seule automatisation pilote les
+  deux claviers : un message publié par clavier, actions déclenchées une fois.
+- Un déclencheur MQTT par clavier, les deux peuvent armer et désarmer.
+- Le retour `invalid_code` ne part que vers le clavier utilisé.
+
+**Bugs corrigés**
+- `armed_home` n'avait **aucun déclencheur** : la branche correspondante était
+  morte, passer en *Armed Home* ne mettait jamais le clavier à jour.
+- Les codes n'étaient pas « trimés » : `1234; 5678` produisait `" 5678"`, qui ne
+  correspondait à aucune saisie.
+- Les codes spéciaux étaient comparés en sous-chaîne : un code `1` déclenchait
+  son action pour tout code contenant un `1`.
+- Le retour `invalid_code` était réservé aux codes numériques ; un tag RFID
+  inconnu ne provoquait aucun retour.
+
+**Simplifications**
+- Le nom du clavier remplace ses deux topics MQTT.
+- Le code est défini à un seul endroit, plus de code de panneau séparé.
+- Les huit branches d'état quasi identiques deviennent une table
+  état → mode, et les quatre appels de service une table bouton → action.
+
+## Ce qui n'est pas géré
+
+Le blueprint amont proposait des actions Home Assistant libres à chaque
+changement d'état (notifications, sirène...) et trois codes PIN spéciaux
+déclenchant des scripts. Ils ont été retirés au profit du mapping bouton →
+action de panneau. Pour une notification, une automatisation séparée
+déclenchée sur l'entité `alarm_control_panel` fait le travail et se relit plus
+facilement.
 
 ## Crédits
 
