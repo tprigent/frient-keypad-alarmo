@@ -12,43 +12,41 @@ blueprint:
   homeassistant:
     min_version: 2024.10.0
   input:
-    keypad_1:
-      name: Keypad 1
-      description: "MQTT topics of the first Zigbee2MQTT keypad."
-      icon: mdi:dialpad
-      collapsed: false
-      input:
-        keypad_1_topic:
-          name: MQTT State Topic of Keypad 1
-          description:
-            "The State Topic is composed of your Zigbee2MQTT base_topic (see
-            your Z2M Addon Configuration) and the Friendly Name of your keypad in Z2M.\n
-            Example: zigbee2mqtt/Keypad1"
-          selector:
-            text: {}
-        keypad_1_topic_set:
-          name: MQTT Set Topic of Keypad 1
-          description:
-            "This is the same as the State Topic above, with the addition of /set.\n
-            Example: zigbee2mqtt/Keypad1/set"
-          selector:
-            text: {}
-    keypad_2:
-      name: Keypad 2
+    keypads:
+      name: Keypads
       description:
-        "MQTT topics of the second Zigbee2MQTT keypad.\n
-        Both keypads share the same PIN codes, the same alarm panel and the same actions."
+        "The two Zigbee2MQTT keypads to keep in sync. Their MQTT topics are
+        built from the names below, so there is nothing else to enter.\n
+        Both keypads share the same codes, the same alarm panel and the same actions."
       icon: mdi:dialpad
       collapsed: false
       input:
-        keypad_2_topic:
-          name: MQTT State Topic of Keypad 2
-          description: "Example: zigbee2mqtt/Keypad2"
+        keypad_1_name:
+          name: Name of Keypad 1 in Zigbee2MQTT
+          description:
+            "The friendly name of the keypad, spelled exactly as in
+            Zigbee2MQTT > Devices (it is case sensitive).\n
+            Example: Keypad1 gives the topics zigbee2mqtt/Keypad1 and
+            zigbee2mqtt/Keypad1/set."
           selector:
             text: {}
-        keypad_2_topic_set:
-          name: MQTT Set Topic of Keypad 2
-          description: "Example: zigbee2mqtt/Keypad2/set"
+        keypad_2_name:
+          name: Name of Keypad 2 in Zigbee2MQTT
+          description: "Example: Keypad2"
+          selector:
+            text: {}
+    zigbee2mqtt:
+      name: Zigbee2MQTT
+      description: "Only needed if you changed the Zigbee2MQTT base topic."
+      icon: mdi:zigbee
+      collapsed: true
+      input:
+        base_topic:
+          name: Zigbee2MQTT Base Topic
+          description:
+            "The base_topic of your Zigbee2MQTT configuration. Leave the default
+            unless you changed it there."
+          default: zigbee2mqtt
           selector:
             text: {}
     keypad_codes:
@@ -248,8 +246,13 @@ blueprint:
 
 variables:
   panel_entity: !input control_panel
-  keypad_1_set_topic: !input keypad_1_topic_set
-  keypad_2_set_topic: !input keypad_2_topic_set
+  # Z2M publishes a device on <base topic>/<friendly name>, and takes commands
+  # on the same topic with /set appended. Stray slashes and spaces are trimmed
+  # so "zigbee2mqtt/" or " Keypad1" still build a valid topic.
+  keypad_1_set_topic: >-
+    {{ (base_topic | string).strip('/ ') ~ '/' ~ (keypad_1_name | string).strip('/ ') ~ '/set' }}
+  keypad_2_set_topic: >-
+    {{ (base_topic | string).strip('/ ') ~ '/' ~ (keypad_2_name | string).strip('/ ') ~ '/set' }}
   # Every keypad that has to mirror the panel state. Duplicates and blanks are
   # dropped so a single publish happens per keypad.
   keypad_set_topics: >-
@@ -274,6 +277,9 @@ variables:
     {{ modes.get(panel_state, '') }}
   # Codes are entered one per line, but a single semicolon-separated string is
   # still accepted so configurations made with an older version keep working.
+  base_topic: !input base_topic
+  keypad_1_name: !input keypad_1_name
+  keypad_2_name: !input keypad_2_name
   pin_list_var: !input pin_list
   rfid_list_var: !input rfid_list
   custom_pincode_1_var: !input custom_pincode_1
@@ -298,6 +304,14 @@ variables:
        .split(';') | map('trim') | reject('eq', '') | list }}
   pin_actions_list: "{{ custom_pincodes_1 + custom_pincodes_2 + custom_pincodes_3 }}"
 
+# A trigger cannot read the variables above: they are rendered per run, while
+# triggers are set up once. trigger_variables is the way to reach a blueprint
+# input from a trigger, and is rendered once, when the automation is set up.
+trigger_variables:
+  tv_base_topic: !input base_topic
+  tv_keypad_1_name: !input keypad_1_name
+  tv_keypad_2_name: !input keypad_2_name
+
 triggers:
   - trigger: state
     entity_id: !input control_panel
@@ -312,10 +326,10 @@ triggers:
       - triggered
     id: panel
   - trigger: mqtt
-    topic: !input keypad_1_topic
+    topic: "{{ (tv_base_topic | string).strip('/ ') ~ '/' ~ (tv_keypad_1_name | string).strip('/ ') }}"
     id: keypad_1_mqtt
   - trigger: mqtt
-    topic: !input keypad_2_topic
+    topic: "{{ (tv_base_topic | string).strip('/ ') ~ '/' ~ (tv_keypad_2_name | string).strip('/ ') }}"
     id: keypad_2_mqtt
   - trigger: homeassistant
     event: start

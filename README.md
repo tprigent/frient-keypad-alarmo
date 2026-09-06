@@ -39,6 +39,17 @@ sont mis à jour, mais les actions ne partent qu'une fois.
   spécial `1` déclenchait son action pour *tout* code contenant un `1`.
   La comparaison est maintenant exacte (et accepte plusieurs codes séparés par `;`).
 
+**Configuration réduite au minimum**
+- On saisit le **nom du clavier dans Zigbee2MQTT**, pas ses topics MQTT. Les
+  topics en sont déduits : `<base_topic>/<nom>` pour l'état et
+  `<base_topic>/<nom>/set` pour les commandes. Le `base_topic` est demandé une
+  seule fois, dans une section repliée, avec `zigbee2mqtt` par défaut.
+  Les déclencheurs MQTT y accèdent via `trigger_variables`, seule façon pour un
+  déclencheur de lire une entrée de blueprint (il est monté une fois au
+  démarrage, alors que les variables normales sont rendues à chaque exécution).
+- 4 champs de topics deviennent 2 champs de noms : plus de `/set` oublié ni de
+  faute de frappe entre l'état et la commande.
+
 **Gestion des codes centralisée**
 - Les codes du blueprint (PIN + tags RFID) sont **la seule autorité** : le
   panneau est armé / désarmé **sans transmettre de code**. Il n'y a donc plus
@@ -80,16 +91,18 @@ Le format des messages MQTT publiés est inchangé
    automatisations (ou importer l'URL du fichier via **Paramètres → Automatisations
    → Blueprints → Importer**).
 2. Créer une automatisation à partir du blueprint et renseigner :
-   - Clavier 1 : `zigbee2mqtt/Keypad1` et `zigbee2mqtt/Keypad1/set`
-   - Clavier 2 : `zigbee2mqtt/Keypad2` et `zigbee2mqtt/Keypad2/set`
+   - le nom des deux claviers tel qu'il apparaît dans *Zigbee2MQTT → Devices*
+     (`Keypad1`, `Keypad2`...) — la casse compte
    - les codes PIN et les tags RFID (une entrée par code, bouton « Ajouter »),
      communs aux deux claviers
    - l'entité `alarm_control_panel` (une seule fois, aucun code à fournir)
 3. Dans Alarmo : *Général → Armement*, désactiver « Code requis pour
    l'armement » et « Code requis pour le désarmement ».
 
-> Le nom du clavier dans les topics est son *friendly name* Zigbee2MQTT.
-> Si un clavier est renommé dans Z2M, mettre à jour l'automatisation.
+> Si un clavier est renommé dans Zigbee2MQTT, il faut mettre à jour
+> l'automatisation : le nom est ce qui construit les topics.
+> Si ton `base_topic` Z2M n'est pas `zigbee2mqtt`, le renseigner dans la section
+> repliée « Zigbee2MQTT ».
 
 ### Trouver l'identifiant d'un tag RFID
 
