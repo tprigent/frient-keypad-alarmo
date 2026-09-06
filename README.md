@@ -41,9 +41,8 @@ sont mis à jour, mais les actions ne partent qu'une fois.
 
 **Configuration réduite au minimum**
 - On saisit le **nom du clavier dans Zigbee2MQTT**, pas ses topics MQTT. Les
-  topics en sont déduits : `<base_topic>/<nom>` pour l'état et
-  `<base_topic>/<nom>/set` pour les commandes. Le `base_topic` est demandé une
-  seule fois, dans une section repliée, avec `zigbee2mqtt` par défaut.
+  topics en sont déduits : `zigbee2mqtt/<nom>` pour l'état et
+  `zigbee2mqtt/<nom>/set` pour les commandes.
   Les déclencheurs MQTT y accèdent via `trigger_variables`, seule façon pour un
   déclencheur de lire une entrée de blueprint (il est monté une fois au
   démarrage, alors que les variables normales sont rendues à chaque exécution).
@@ -101,8 +100,10 @@ Le format des messages MQTT publiés est inchangé
 
 > Si un clavier est renommé dans Zigbee2MQTT, il faut mettre à jour
 > l'automatisation : le nom est ce qui construit les topics.
-> Si ton `base_topic` Z2M n'est pas `zigbee2mqtt`, le renseigner dans la section
-> repliée « Zigbee2MQTT ».
+> Le préfixe `zigbee2mqtt` est en dur (c'est le `base_topic` par défaut de Z2M).
+> Si tu l'as changé dans Zigbee2MQTT, il y a deux lignes à adapter dans le
+> blueprint : `tv_base_topic` sous `trigger_variables`, et `base_topic` sous
+> `variables`.
 
 ### Trouver l'identifiant d'un tag RFID
 

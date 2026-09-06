@@ -35,20 +35,6 @@ blueprint:
           description: "Example: Keypad2"
           selector:
             text: {}
-    zigbee2mqtt:
-      name: Zigbee2MQTT
-      description: "Only needed if you changed the Zigbee2MQTT base topic."
-      icon: mdi:zigbee
-      collapsed: true
-      input:
-        base_topic:
-          name: Zigbee2MQTT Base Topic
-          description:
-            "The base_topic of your Zigbee2MQTT configuration. Leave the default
-            unless you changed it there."
-          default: zigbee2mqtt
-          selector:
-            text: {}
     keypad_codes:
       name: Keypad Codes
       description: "PIN codes and RFID tags accepted by both keypads. At least one code or tag is required."
@@ -277,7 +263,7 @@ variables:
     {{ modes.get(panel_state, '') }}
   # Codes are entered one per line, but a single semicolon-separated string is
   # still accepted so configurations made with an older version keep working.
-  base_topic: !input base_topic
+  base_topic: zigbee2mqtt
   keypad_1_name: !input keypad_1_name
   keypad_2_name: !input keypad_2_name
   pin_list_var: !input pin_list
@@ -308,7 +294,9 @@ variables:
 # triggers are set up once. trigger_variables is the way to reach a blueprint
 # input from a trigger, and is rendered once, when the automation is set up.
 trigger_variables:
-  tv_base_topic: !input base_topic
+  # The Zigbee2MQTT base_topic. Change it here and in the variables below if
+  # yours is not the default.
+  tv_base_topic: zigbee2mqtt
   tv_keypad_1_name: !input keypad_1_name
   tv_keypad_2_name: !input keypad_2_name
 
