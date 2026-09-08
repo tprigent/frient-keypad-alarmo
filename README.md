@@ -92,6 +92,11 @@ chaque exécution manuelle de l'automatisation — utile après un réappairage 
 - Le retour `invalid_code` ne part que vers le clavier utilisé.
 
 **Bugs corrigés**
+- Un code **numérique** n'était jamais reconnu. Home Assistant reconvertit le
+  résultat d'un template vers son type naturel : `action_code` valant `"1234"`
+  revenait dans l'automatisation en entier `1234`, qui ne correspond à aucune
+  entrée d'une liste de chaînes. Résultat, tout appui était refusé. Les deux
+  côtés de la comparaison sont maintenant forcés en texte.
 - Un code accepté n'était **jamais confirmé au clavier**. Le clavier envoie un
   numéro de transaction avec chaque demande d'armement et attend qu'on le lui
   renvoie ; sans cette réponse il considère le code comme refusé, quoi que

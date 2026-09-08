@@ -157,9 +157,11 @@ variables:
     {{ keypad_2_set_topic if (trigger is defined and trigger.id | default('') == 'keypad_2_mqtt')
        else keypad_1_set_topic }}
   codes_var: !input codes
+  # Every code is kept as text: a template result is parsed back to its natural
+  # type, so a numeric PIN would come back as a number and never match.
   valid_codes: >-
     {{ (codes_var if codes_var is string else codes_var | map('string') | join(';'))
-       .split(';') | map('trim') | reject('eq', '') | list }}
+       .split(';') | map('trim') | reject('eq', '') | map('string') | list }}
   # Keypad button -> panel service, as configured above.
   button_services:
     arm_all_zones: !input button_away
@@ -203,7 +205,12 @@ actions:
               # Every action needs a valid code, the SOS button included. Drop
               # `keypad_action == 'emergency' or` from the line below to let SOS
               # through without one.
-              code_ok: "{{ keypad_code != '' and keypad_code in valid_codes }}"
+              # keypad_code is compared as text on both sides: a PIN of 1234
+              # is handed back to this line as the number 1234, which matches
+              # no entry in a list of strings.
+              code_ok: >-
+                {{ keypad_code | string | trim != ''
+                   and keypad_code | string | trim in valid_codes | map('string') | list }}
               # The keypad quotes a transaction number on an arm / disarm
               # request and waits for it to come back. Without that reply it
               # reports the code as refused, whatever the panel does next.
